@@ -2,16 +2,80 @@
 <html>
 <head>
     <title>Extracción de correos electrónicos</title>
-    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <label for="dominios">Ingresa los dominios:</label>
-    <textarea id="dominios" rows="4" cols="50"></textarea>
-    <br>
-    <button onclick="extraerCorreos()">Extraer correos electrónicos</button>
-    <br>
+    <label for="dominios-input">Ingrese los dominios uno debajo del otro:</label><br>
+    <textarea id="dominios-input" rows="4" cols="50"></textarea><br>
+    <button id="extraer-btn">Extraer correos electrónicos</button>
     <pre id="email-results"></pre>
 
-    <script src="email-validator.js"></script>
+    <script type="module" src="https://raw.githubusercontent.com/vitocaccia89/prueba/main/email-validator.js"></script>
+    <script type="module">
+        const emailResults = document.getElementById('email-results');
+        const dominiosInput = document.getElementById('dominios-input');
+        const extraerBtn = document.getElementById('extraer-btn');
+
+        extraerBtn.addEventListener('click', async () => {
+            const dominios = dominiosInput.value.trim().split("\n");
+
+            const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
+
+            emailResults.innerText = '';
+
+            for (const dominio of dominios) {
+                try {
+                    const response = await fetch(dominio, {
+                        method: 'GET',
+                        mode: 'cors',
+                        cache: 'no-cache',
+                        credentials: 'omit',
+                        redirect: 'follow',
+                        referrerPolicy: 'no-referrer'
+                    });
+                    const htmlContent = await response.text();
+                    const newEmails = htmlContent.match(emailRegex) || [];
+
+                    const uniqueEmails = new Set();
+                    for (const email of newEmails) {
+                        try {
+                            const validEmail = await validateEmail(email);
+                            if (validEmail) {
+                                uniqueEmails.add(email);
+                            }
+                        } catch (error) {
+                            // Ignorar errores de validación de correo electrónico
+                        }
+                    }
+
+                    const filteredEmails = new Set();
+                    for (const email of uniqueEmails) {
+                        if (!email.endsWith('@sentry.wixpress.com') && !email.endsWith('@sentry-next.wixpress.com')) {
+                            filteredEmails.add(email);
+                        }
+                    }
+
+                    filteredEmails.forEach((email) => {
+                        emailResults.innerText += email + '\n';
+                    });
+                } catch (error) {
+                    console.error('Error al acceder al dominio:', dominio);
+                    console.error(error);
+                }
+            }
+        });
+
+        function validateEmail(email) {
+            return new Promise((resolve, reject) => {
+                validate(email)
+                    .then((valid) => {
+                        resolve(valid);
+                    })
+                    .catch((error) => {
+                        reject(error);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>
+
